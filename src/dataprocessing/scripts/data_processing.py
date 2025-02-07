@@ -141,6 +141,42 @@ def format_data(input_file, output_file):
         click.echo(f"Error formatting data: {str(e)}", err=True)
         sys.exit(1)
 
+@cli.command(name="pad")
+@click.argument('input_file', type=click.Path(exists=True))
+@click.argument('output_file', type=click.Path())
+@click.option('--max_length', type=int, help='Maximum sequence length for padding')
+def pad_sequences(input_file, output_file, max_length=None):
+    """Pad sequences with zeros to a fixed length
+    
+    Args:
+        input_file: Path to input file
+        output_file: Path to save padded data
+        max_length: Maximum sequence length for padding. If not provided, uses length of longest sequence
+    """
+    try:
+        # Read input data
+        df = read_file(input_file)
+        
+        # If max_length not provided, use longest sequence
+        if not max_length:
+            max_length = df.shape[1]
+            
+        # Pad sequences with zeros
+        df_padded = df.copy()
+        for col in df.columns:
+            if len(df[col]) < max_length:
+                padding_length = max_length - len(df[col])
+                df_padded[col] = pd.concat([df[col], pd.Series([0] * padding_length)])
+                
+        save_file(df_padded, output_file)
+        
+        click.echo(f"Padded sequences saved to: {output_file}")
+        
+    except Exception as e:
+        click.echo(f"Error padding sequences: {str(e)}", err=True)
+        sys.exit(1)
+
+
 if __name__ == '__main__':
     cli()
 
