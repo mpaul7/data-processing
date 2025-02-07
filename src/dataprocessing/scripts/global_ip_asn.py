@@ -1,12 +1,11 @@
 import re
-import os
-import json
 import click
 import subprocess
 import pandas as pd
 from collections import defaultdict
 import logging
 from dataprocessing.utils.mapping_asn import *
+from dataprocessing.utils.common import save_file
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -14,17 +13,14 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 static_ip = defaultdict(list)
 ip_not_found = defaultdict(list)
 
-output_dir = '/data/Solana_datasets/mn-data/results/globall_ip'
-prefix = 'twc_v1-5-4_20apps'
-file_name = f'{prefix}_{pd.Timestamp.now().strftime("%Y-%m-%d_%H-%M-%S")}.csv'
-output = os.path.join(output_dir, file_name)
 
 @click.group()
 def cli():
     """ Based on ASN, generate a CSV file containing 'net_address' and 'label' """
 
 @cli.command(name='asn')
-def run_whois():
+@click.argument('output_file')
+def run_whois(output_file):
     """ Run whois command to retrieve route information """
     
     def extract_route_info(whois_output):
@@ -64,7 +60,7 @@ def run_whois():
         # Prepare data for CSV output
         tuples = [(subnet, k) for k, v in static_ip.items() for subnet in v]
         df = pd.DataFrame.from_records(tuples, columns=['net_address', 'label'])
-        df.to_csv(output, index=False)
+        save_file(df, output_file)
 
         logging.info('Generated network addresses')
         logging.info(df.groupby('label').size())
