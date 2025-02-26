@@ -2,18 +2,14 @@ import click
 import json
 import numpy as np
 
-
 import tensorflow as tf
 from tensorflow import keras
 from keras import backend as k
 from keras.utils import plot_model
 from keras.applications.mobilenet_v2 import MobileNetV2
 
-
 from tensorflow.python.profiler.model_analyzer import profile
 from tensorflow.python.profiler.option_builder import ProfileOptionBuilder
-
-
 
 
 @click.group()
@@ -22,6 +18,35 @@ def cli():
     pass
 
 
+
+@cli.command('flop2')
+@click.argument('model_h5_path', type=str)
+def get_flops(model_h5_path):
+    """https://www.youtube.com/watch?v=6HhLePIgMEM"""
+    
+    """
+    python3 /home/mpaul/projects/mpaul/data_processing/data-processing/src/dataprocessing/scripts/modle_memory.py flop2 /home/mpaul/projects/mpaul/mai2/models/models_dec05/mlp_20241205124515.h5
+    
+    """
+    session = tf.compat.v1.Session()
+    graph = tf.compat.v1.get_default_graph()
+    
+    with graph.as_default():
+        with session.as_default():
+            model = tf.keras.models.load_model(model_h5_path)
+            
+            run_meta = tf.compat.v1.RunMetadata()
+            opts = tf.compat.v1.profiler.ProfileOptionBuilder.float_operation()
+            
+            # use Keras session graph in the call to the profiler
+            flops = tf.compat.v1.profiler.profile(graph=graph, run_meta=run_meta, cmd='op', options=opts)
+            print(f"Total FLOPs: {flops.total_float_ops} FLOPs")
+            print(f"Total Parameters: {flops.total_parameters} Parameters")
+            # print(f"Total MACs: {flops.total_mac_operations} MACs")
+            # print(f"Total Operations: {flops.total_operations} Operations")
+            print(f"TOPs: {flops.total_float_ops / 1e9} TOPs")
+            
+		# return flops.total_float_ops
 
 @cli.command('flop')
 @click.argument('model_arch_file', type=str)
@@ -66,26 +91,18 @@ def calculate_flops(model_arch_file):
     flops = profile(graph, run_meta=run_meta, options=opts)
     
     print(f"Total FLOPs: {flops.total_float_ops} FLOPs")
-    
-    # Example: Define a sample model
-    model = tf.keras.applications.MobileNetV2(weights=None, input_shape=(224, 224, 3))
 
-    # Calculate FLOPs
-    # flops = calculate_flops(model)
-  
-    
-    # return flops.total_float_ops  # Returns total FLOPs
 
-   
 
 @cli.command('memory')
 @click.argument('batch_size', type=int)
 def get_model_memory_usage(batch_size):
     model_arch_file = "/home/mpaul/projects/entadev_mn/platform/files/testing/enta_v0.4.5/data/cnn_model.json"
+    # model_arch_file = "/home/mpaul/Downloads/pcaps/40app_models_1-6-0-24_v4_live/openset-tl_cnn-lstm-acnn_40app_384k-model_summary.json"
     with open(model_arch_file) as f:
         model_arch = json.load(f)
     model = tf.keras.models.model_from_json(model_arch)
-
+    
     print(model.summary())
     
     features_mem = 0
@@ -125,9 +142,7 @@ def get_model_memory_usage(batch_size):
     print("Minimum memory required for the model is ->: ", total_memory_GB, "GB")
     return total_memory_GB
     
-# mem_for_my_model = get_model_memory_usage(16, model)
-# print("====================================================")
-# print("Minimum memory required for my model is: ", mem_for_my_model, "GB")
+
 
 if __name__ == '__main__':
     cli()
